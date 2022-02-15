@@ -138,6 +138,13 @@ const formatTransactionDate=function(date,locale){
   }
 }
 
+const formatCurrency=function(value,locale,currency){
+  return new Intl.NumberFormat(locale,{
+    style:'currency',
+    currency:currency
+  }).format(value);
+}
+
 const displayTransactions=function(account,sort=false){
   containerTransactions.innerHTML='';
 
@@ -150,13 +157,15 @@ const transacs=sort ? account.transactions.slice().sort((x,y)=>x-y) :account.tra
     const date=new Date(account.transactionsDates[index]);
     const transDate=formatTransactionDate(date,account.locale);
 
+   const formattedTrans=formatCurrency(trans,currentAccount.locale,currentAccount.currency);
+
     const transactionsRow=`
     <div class="transactions__row">
           <div class="transactions__type transactions__type--${tranType}">
             ${index+1} ${tranType}
           </div>
           <div class="transactions__date">${transDate}</div>
-          <div class="transactions__value">${trans}$</div>
+          <div class="transactions__value">${formattedTrans}</div>
     </div>
     `
     containerTransactions.insertAdjacentHTML('afterbegin',transactionsRow);
@@ -179,7 +188,7 @@ createUserNickname(accounts);
 const dipslayBalance=function(account){
   const balance=account.transactions.reduce((acc,trans)=>acc+trans,0);
   account.balance=balance;
-  labelBalance.textContent=`${balance}$`;
+  labelBalance.textContent=formatCurrency(balance,currentAccount.locale,currentAccount.currency);
 }
 
 
@@ -187,14 +196,17 @@ const dipslayBalance=function(account){
 
 const displayTotal=function(account){
   const depositesTotal=account.transactions.filter(trans => trans>0).reduce((acc,trans)=>acc+trans,0);
-  labelSumIn.textContent=`${depositesTotal}$`;
+  labelSumIn.textContent=formatCurrency(depositesTotal,currentAccount.locale,currentAccount.currency);
+
 
   const withdrawalsTotal=account.transactions.filter(trans=>trans<0).reduce((acc,trans)=>acc+trans,0);
-  labelSumOut.textContent=`${withdrawalsTotal}$`;
+  labelSumOut.textContent=formatCurrency(withdrawalsTotal,currentAccount.locale,currentAccount.currency);
+  ;
 
   const interestTotal=account.transactions.filter(trans=>trans>0).map(depos=>(depos*account.interest)/100)
     .filter((interest,index,arr)=>interest>5).reduce((acc,interest)=>acc+interest);
-  labelSumInterest.textContent=`${interestTotal}$`;
+  labelSumInterest.textContent=formatCurrency(interestTotal,currentAccount.locale,currentAccount.currency);
+  ;
 }
 
 const updateUi=function(acc){
@@ -218,6 +230,22 @@ const month=`${now.getMonth()+1}`.padStart(2,'0');
 const year=now.getFullYear();
 labelDate.textContent=`${day}/${month}/${year}`;
 
+const startLogoutTimer=function(){
+  let time=300;
+
+  const logOutTimer=setInterval(function(){
+    let minutes=String(Math.trunc(time/60)).padStart(2,'0');
+    let seconds=String(time%60).padStart(2,'0');
+      labelTimer.textContent=`${minutes}:${seconds}`;
+      time--;
+      if(time===0){
+        clearInterval(logOutTimer);
+        containerApp.style.opacity=0;
+        labelWelcome.textContent='Войдите в свой аккаунт';
+      }
+  },1000);
+}
+
 
 
 btnLogin.addEventListener('click',function(e){
@@ -225,6 +253,7 @@ btnLogin.addEventListener('click',function(e){
   currentAccount=accounts.find(account=>account.userNickname===inputLoginUsername.value);
 
   if( currentAccount?.pin === Number(inputLoginPin.value) && currentAccount){
+    startLogoutTimer();
 
     inputLoginPin.value='';
     inputLoginUsername.value='';
@@ -300,9 +329,9 @@ btnLoan.addEventListener('click',function(e){
   const loanAmount=Number(inputLoanAmount.value);
 
   if(loanAmount>0 && currentAccount.transactions.some(trans=>trans>=loanAmount*10/100)){
-    currentAccount.transactions.push(loanAmount);
-    currentAccount.transactionsDates.push(new Date().toISOString());
-    updateUi(currentAccount);
+    setTimeout(function(){ currentAccount.transactions.push(loanAmount);
+      currentAccount.transactionsDates.push(new Date().toISOString());
+      updateUi(currentAccount)},3000);
   }
 });
 
